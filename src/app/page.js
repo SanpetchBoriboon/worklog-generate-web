@@ -14,10 +14,10 @@ export default function Home() {
 			const data = new FormData();
 			data.append("file", file);
 
-			const fileName = file.name
+			const fileName = file.name;
 
-			const yaerMonth = fileName.split('_')[1].split('-');
-      		const generateFileName = `Report JiraWorkLog - ${yaerMonth[0]}_${yaerMonth[1]}.xlsx`;
+			const yaerMonth = fileName.split("_")[1].split("-");
+			const generateFileName = `Report JiraWorkLog - ${yaerMonth[0]}_${yaerMonth[1]}.xlsx`;
 
 			const res = await fetch("http://localhost:3001/worklogFile/generateFile", {
 				method: "POST",
