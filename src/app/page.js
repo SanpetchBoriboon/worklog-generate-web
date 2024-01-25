@@ -56,7 +56,7 @@ export default function Home() {
 							<label className="inline-block mb-2 text-gray-500">File Upload</label>
 							<div className="flex items-center justify-center w-full">
 								<label className="flex flex-col w-full h-32 border-4 border-blue-200 border-dashed hover:bg-gray-100 hover:border-gray-300">
-									<div className="flex flex-col items-center justify-center pt-7">
+									<div className="flex flex-col items-center justify-center pt-7" style={{cursor: 'pointer'}}>
 										{file ? (
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
