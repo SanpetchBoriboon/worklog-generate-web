@@ -19,7 +19,7 @@ export default function Home() {
 			const yaerMonth = fileName.split("_")[1].split("-");
 			const generateFileName = `Report JiraWorkLog - ${yaerMonth[0]}_${yaerMonth[1]}.xlsx`;
 
-			const res = await fetch("http://localhost:3001/worklogFile/generateFile", {
+			const res = await fetch("https://generate-worklog-server.fly.dev/worklogFile/generateFile", {
 				method: "POST",
 				body: data,
 			});
