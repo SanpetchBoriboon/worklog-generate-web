@@ -7,7 +7,6 @@ import * as dateFns from "date-fns";
 export default function Home() {
 	const [file, setFile] = useState(null);
 	const [loading, setLoading] = useState(false);
-	const [jsonData, setJsonData] = useState(null);
 
 	const handleFileChange = (e) => {
 		const uploadedFile = e.target.files?.[0];
@@ -48,7 +47,6 @@ export default function Home() {
 	};
 
 	const generateExcelFile = async () => {
-		console.log("file", file);
 		const fileBuffer = await file.arrayBuffer();
 		const jsonData = await convertExcelToJson(fileBuffer);
 		const yaerMonth = file.name.split("_")[1].split("-");
