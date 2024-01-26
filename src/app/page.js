@@ -1,10 +1,96 @@
 "use client";
 
 import { useState } from "react";
+import * as ExcelJS from "exceljs";
+import * as dateFns from "date-fns";
 
 export default function Home() {
 	const [file, setFile] = useState(null);
 	const [loading, setLoading] = useState(false);
+	const [jsonData, setJsonData] = useState(null);
+
+	const handleFileChange = (e) => {
+		const uploadedFile = e.target.files?.[0];
+		setFile(uploadedFile);
+
+		// Optionally, you can read the contents of the file here and convert it to JSON
+		if (uploadedFile) {
+			convertExcelToJson(uploadedFile);
+		}
+	};
+
+	const convertExcelToJson = async (uploadedFile) => {
+		const workbook = new ExcelJS.Workbook();
+		await workbook.xlsx.load(uploadedFile);
+
+		const originalData = [];
+
+		workbook.eachSheet((sheet, sheetId) => {
+			sheet.eachRow((row, rowNumber) => {
+				const rowData = {};
+
+				row.eachCell((cell, colNumber) => {
+					rowData[`Column${colNumber}`] = cell.value;
+				});
+
+				originalData.push(rowData);
+			});
+		});
+
+		// Extract header row
+		const headerRow = originalData[0];
+
+		// Convert columns to desired format using map
+		const convertedData = originalData.slice(1).map((row) => {
+			return Object.fromEntries(Object.entries(row).map(([key, value]) => [headerRow[key], value]));
+		});
+		return convertedData;
+	};
+
+	const generateExcelFile = async () => {
+		console.log("file", file);
+		const fileBuffer = await file.arrayBuffer();
+		const jsonData = await convertExcelToJson(fileBuffer);
+		const yaerMonth = file.name.split("_")[1].split("-");
+		const fileName = `Report JiraWorkLog - ${yaerMonth[0]}_${yaerMonth[1]}`;
+
+		const worklogSheet = jsonData
+			.sort((a, b) => {
+				return new Date(a["Started at"]).valueOf() - new Date(b["Started at"]).valueOf();
+			})
+			.map((col) => {
+				let timeSpent = col["Time Spent (seconds)"] / 3600;
+				const worklogCol = {};
+				worklogCol["Name"] = col["Author"];
+				worklogCol["ISSUEKEY"] = col["Issue Key"];
+				worklogCol["Subtask Name"] = col["Issue Summary"];
+				worklogCol["Description"] = col["Comment"];
+				worklogCol["Date"] = dateFns.format(new Date(col["Started at"]), "dd/MM/yyyy");
+				worklogCol["Time Spent"] = timeSpent.toFixed(1) + "h";
+				return worklogCol;
+			});
+
+		let rows = [];
+
+		for (const doc of worklogSheet) {
+			rows.push(Object.values(doc));
+		}
+
+		const workbook = new ExcelJS.Workbook();
+		let sheet = workbook.addWorksheet(`sheet1`);
+		rows.unshift(Object.keys(worklogSheet[0]));
+		sheet.addRows(rows);
+
+		// Generate the Excel file
+		const buffer = await workbook.xlsx.writeBuffer();
+		const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+		const link = document.createElement("a");
+		link.href = window.URL.createObjectURL(blob);
+		link.download = `${fileName}.xlsx`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
 
 	const onSubmit = async (e) => {
 		e.preventDefault();
@@ -13,37 +99,14 @@ export default function Home() {
 
 		try {
 			setLoading(true);
-
-			const data = new FormData();
-			data.append("file", file);
-
-			const fileName = file.name;
-			const yaerMonth = fileName.split("_")[1].split("-");
-			const generateFileName = `Report JiraWorkLog - ${yaerMonth[0]}_${yaerMonth[1]}.xlsx`;
-
-			const res = await fetch(`https://generate-worklog-server.fly.dev/worklogFile/generateFile`, {
-				method: "POST",
-				body: data,
-			});
-
-			if (!res.ok) {
-				throw new Error(await res.text());
-			}
-
-			const blob = await res.blob();
-			const link = document.createElement("a");
-			link.href = window.URL.createObjectURL(blob);
-			link.download = generateFileName;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-
-			// Reload the window after download
-			window.location.reload();
+			await generateExcelFile();
 		} catch (e) {
 			console.error(e);
 		} finally {
 			setLoading(false);
+
+			// reload window when download success
+			window.location.reload();
 		}
 	};
 
@@ -56,7 +119,7 @@ export default function Home() {
 							<label className="inline-block mb-2 text-gray-500">File Upload</label>
 							<div className="flex items-center justify-center w-full">
 								<label className="flex flex-col w-full h-32 border-4 border-blue-200 border-dashed hover:bg-gray-100 hover:border-gray-300">
-									<div className="flex flex-col items-center justify-center pt-7" style={{cursor: 'pointer'}}>
+									<div className="flex flex-col items-center justify-center pt-7" style={{ cursor: "pointer" }}>
 										{file ? (
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -87,13 +150,15 @@ export default function Home() {
 											{file ? "File attached" : "Attach a file"}
 										</p>
 									</div>
-									<input type="file" name="file" onChange={(e) => setFile(e.target.files?.[0])} className="opacity-0" />
+									<input type="file" name="file" onChange={handleFileChange} className="opacity-0" />
 								</label>
 							</div>
 						</div>
 						<div className="flex justify-center p-2">
 							<button
-								className={`w-full px-4 py-2 text-white ${file && !loading ? "bg-green-500" : "bg-gray-500"} rounded shadow-x`}
+								className={`w-full px-4 py-2 text-white ${
+									file && !loading ? "bg-green-500" : "bg-gray-500"
+								} rounded shadow-x`}
 								type="submit"
 								disabled={!file || loading}
 							>
